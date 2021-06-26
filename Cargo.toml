@@ -1,0 +1,15 @@
+[package]
+name = "system-config"
+version = "0.1.0"
+edition = "2018"
+description = "A library for storing application properties on disk."
+license = "MIT"
+keywords = ["system", "properties", "config"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dirs = "3.0.2"
+thiserror = "1.0.25"
+serde_yaml = "0.8.17"
+fstream = "0.1.2"
