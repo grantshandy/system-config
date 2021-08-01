@@ -1,10 +1,7 @@
 use std::{collections::HashMap, path::PathBuf};
+use thiserror::Error;
 
-mod error;
-
-pub use error::Error;
-
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Config {
     internal: HashMap<String, String>,
     pub path: PathBuf,
@@ -29,7 +26,7 @@ impl Config {
         
                 match fstream::write_text(path.clone(), deserialized.clone(), true) {
                     Some(_) => (),
-                    None => return Err(Error::File(format!("Couldn't write text to {}", path.to_str().unwrap()))),
+                    None => return Err(Error::Io(format!("Couldn't write text to {}", path.to_str().unwrap()))),
                 };
 
                 deserialized
@@ -53,7 +50,7 @@ impl Config {
     pub fn read(&mut self) -> Result<(), Error> {       
         let contents = match fstream::read_text(self.path.clone()) {
             Some(data) => data,
-            None => return Err(Error::File("Couldn't read text".to_string())),
+            None => return Err(Error::Io("Couldn't read text".to_string())),
         };
 
         let internal: HashMap<String, String> = match serde_yaml::from_str(contents.as_str()) {
@@ -72,7 +69,7 @@ impl Config {
 
         match fstream::write_text(self.clone().path, deserialized, true) {
             Some(_) => (),
-            None => return Err(Error::File(format!("Couldn't write text to {}", self.path.to_str().unwrap()))),
+            None => return Err(Error::Io(format!("Couldn't write text to {}", self.path.to_str().unwrap()))),
         };
 
         Ok(())
@@ -121,4 +118,16 @@ impl Config {
     pub fn clear(&mut self) {
         self.internal.clear();
     }
+}
+
+#[derive(Error, Debug, Clone, PartialEq, Hash)]
+pub enum Error {
+    #[error("Other Error: {0}")]
+    Other(String),
+    #[error("Error getting path: {0}")]
+    Path(String),
+    #[error("Error getting file data: {0}")]
+    Io(String),
+    #[error("Error parsing file: {0}")]
+    Parse(String),
 }
