@@ -11,6 +11,7 @@ pub struct Config {
 }
 
 impl Config {
+    /// Create a new system config.
     pub fn new<T: AsRef<str>>(name: T) -> Result<Self, Error> {
         let mut path = match dirs::config_dir() {
             Some(data) => data,
@@ -48,6 +49,7 @@ impl Config {
         return Ok(myself);
     }
 
+    /// Update the config from disk.
     pub fn read(&mut self) -> Result<(), Error> {       
         let contents = match fstream::read_text(self.path.clone()) {
             Some(data) => data,
@@ -64,6 +66,7 @@ impl Config {
         Ok(())
     }
 
+    /// Update the disk from the config.
     pub fn write(&self) -> Result<(), Error> {
         let deserialized = serde_yaml::to_string(&self.clone().internal).unwrap();
 
@@ -75,10 +78,29 @@ impl Config {
         Ok(())
     }
 
+    /// Insert a key-value pair into the config and write to disk.
+    pub fn write_insert<T: AsRef<str>>(&mut self, key: T, value: T) -> Result<(), Error> {
+        self.insert(key, value);
+
+        return self.write();
+    }
+
+    /// Insert a key-value pair into the config.
     pub fn insert<T: AsRef<str>>(&mut self, key: T, value: T) {
         self.internal.insert(key.as_ref().to_string(), value.as_ref().to_string());
     }
 
+    /// Read the system config and query the config.
+    pub fn read_get<T: AsRef<str>>(&mut self, query: T) -> Result<Option<String>, Error> {
+        match self.read() {
+            Ok(_) => (),
+            Err(error) => return Err(Error::Path(error.to_string())),
+        }
+
+        return Ok(self.get(query));
+    }
+
+    /// Get a value for a key.
     pub fn get<T: AsRef<str>>(&self, query: T) -> Option<String> {
         let res = match self.internal.get(&query.as_ref().to_string()) {
             Some(data) => data,
@@ -88,16 +110,15 @@ impl Config {
         return Some(res.to_string());
     }
 
-    pub fn clear(&mut self) -> Result<(), Error> {
+    /// Clear all data in the config and write to disk.
+    pub fn write_clear(&mut self) -> Result<(), Error> {
+        self.clear();
+
+        return self.write();
+    }
+
+    /// Clear all data in the config.
+    pub fn clear(&mut self) {
         self.internal.clear();
-
-        let deserialized = serde_yaml::to_string(&self.internal).unwrap();
-
-        match fstream::write_text(self.clone().path, deserialized, true) {
-            Some(_) => (),
-            None => return Err(Error::File(format!("Couldn't write text to {}", self.path.to_str().unwrap()))),
-        };
-
-        Ok(())
     }
 }
