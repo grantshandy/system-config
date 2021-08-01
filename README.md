@@ -1,5 +1,5 @@
 # system-config
-A Rust library for storing application properties on disk for persistence.
+A Rust library for storing application properties on disk in any context and between restarts.
 
 # Example
 Write key-value pairs to the config and write it to disk...
