@@ -75,26 +75,9 @@ impl Config {
         Ok(())
     }
 
-    /// Insert a key-value pair into the config and write to disk.
-    pub fn write_insert<T: AsRef<str>>(&mut self, key: T, value: T) -> Result<(), Error> {
-        self.insert(key, value);
-
-        return self.write();
-    }
-
     /// Insert a key-value pair into the config.
     pub fn insert<T: AsRef<str>>(&mut self, key: T, value: T) {
         self.internal.insert(key.as_ref().to_string(), value.as_ref().to_string());
-    }
-
-    /// Read the system config and query the config.
-    pub fn read_get<T: AsRef<str>>(&mut self, query: T) -> Result<Option<String>, Error> {
-        match self.read() {
-            Ok(_) => (),
-            Err(error) => return Err(Error::Path(error.to_string())),
-        }
-
-        return Ok(self.get(query));
     }
 
     /// Get a value for a key.
@@ -107,16 +90,34 @@ impl Config {
         return Some(res.to_string());
     }
 
+    
+    /// Clear all data in the config.
+    pub fn clear(&mut self) {
+        self.internal.clear();
+    }
+
+    /// Insert a key-value pair into the config and write to disk.
+    pub fn write_insert<T: AsRef<str>>(&mut self, key: T, value: T) -> Result<(), Error> {
+        self.insert(key, value);
+
+        return self.write();
+    }
+
+    /// Read the system config and query the config.
+    pub fn read_get<T: AsRef<str>>(&mut self, query: T) -> Result<Option<String>, Error> {
+        match self.read() {
+            Ok(_) => (),
+            Err(error) => return Err(Error::Path(error.to_string())),
+        }
+
+        return Ok(self.get(query));
+    }
+
     /// Clear all data in the config and write to disk.
     pub fn write_clear(&mut self) -> Result<(), Error> {
         self.clear();
 
         return self.write();
-    }
-
-    /// Clear all data in the config.
-    pub fn clear(&mut self) {
-        self.internal.clear();
     }
 }
 
