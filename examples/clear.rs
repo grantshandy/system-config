@@ -1,7 +1,6 @@
 use system_config::Config;
 
 fn main() {
-    let mut config = Config::new("system-config-example").unwrap();
-
-    config.write_clear().unwrap();
+    Config::write_clear_by_name("system-config-example").unwrap();
+    Config::write_clear_by_name("system-config-multiple-example").unwrap();
 }

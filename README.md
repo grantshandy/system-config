@@ -2,7 +2,7 @@
 A Rust library for storing application properties on disk in any context and between restarts.
 
 # Example
-Write key-value pairs to the config and write it to disk...
+Add key-value pairs to the config and write it to disk...
 ```rust
 let mut config = Config::new("system-config-example").unwrap();
 
@@ -12,7 +12,7 @@ config.insert("key2", "value2");
 config.write().unwrap();
 ```
 
-Then retrieve the information at any other time, even after the application is restarted.
+Then retrieve the information at any other time, even after the application is restarted or in different contexts.
 ```rust
 let config = Config::new("system-config-example").unwrap();
 
@@ -36,9 +36,11 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 ```
 
 # Structure
-Internally, system-config is basically an abstraction over `HashMap`, which reads and writes its information to disk in yaml format on each `.read()` and `.write()`.
+Internally, `system-config` is basically an abstraction over `HashMap`, which reads and writes its information to disk in yaml format on each `.read()` and `.write()`.
 
-The file is written to a .yaml file inside of your config directory, as found by the `dirs` crate.
+The file is written in a .yaml format inside of your config directory, as found by the [`dirs`](https://crates.io/crates/dirs) crate.
+
+![chart](chart.png)
 
 # License
 ```

@@ -1,15 +1,19 @@
 [package]
 name = "system-config"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2018"
 description = "A library for storing application properties on disk."
 license = "MIT"
-keywords = ["system", "properties", "config"]
+readme = "README.md"
+keywords = ["system", "properties", "config", "disk"]
+categories = ["data-structures"]
+repository = "https://github.com/grantshandy/system-config"
+documentation = "https://docs.rs/system-config"
+exclude = ["chart.png"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dirs = "3.0.2"
-thiserror = "1.0.25"
-serde_yaml = "0.8.17"
-fstream = "0.1.2"
+dirs = "3"
+serde_yaml = "0.8"
+anyhow = "1"

@@ -1,5 +1,30 @@
-use std::{collections::HashMap, path::PathBuf};
-use thiserror::Error;
+//! # system-config
+//! A Rust library for storing application properties on disk in any context and between restarts.
+//!
+//! # Example
+//! Add key-value pairs to the config and write it to disk...
+//! ```rust
+//! let mut config = Config::new("system-config-example").unwrap();
+//!
+//! config.insert("key1", "value1");
+//! config.insert("key2", "value2");
+//!
+//! config.write().unwrap();
+//! ```
+//!
+//! Then retrieve the information at any other time, even after the application is restarted or in different contexts.
+//! ```rust
+//! let config = Config::new("system-config-example").unwrap();
+//!
+//! let key1 = config.get("key1").unwrap();
+//! let key2 = config.get("key2").unwrap();
+//!
+//! println!("key1: {}", key1);
+//! println!("key2: {}", key2);
+//! ```
+
+use std::{collections::HashMap, fs, path::PathBuf};
+use anyhow::{Result, anyhow};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Config {
@@ -9,54 +34,49 @@ pub struct Config {
 
 impl Config {
     /// Create a new system config.
-    pub fn new<T: AsRef<str>>(name: T) -> Result<Self, Error> {
+    pub fn new<T: AsRef<str>>(name: T) -> Result<Self> {
         let mut path = match dirs::config_dir() {
             Some(data) => data,
-            None => return Err(Error::Other("Couldn't get config path".to_string())),
+            None => return Err(anyhow!("Couldn't get config path")),
         };
 
         path.push(format!("{}.yaml", name.as_ref()));
 
-        let contents = match fstream::read_text(path.clone()) {
-            Some(data) => data,
-            None => {
+        let contents = match fs::read_to_string(&path) {
+            Ok(data) => data,
+            Err(_error) => {
                 let temp: HashMap<String, String> = HashMap::new();
 
-                let deserialized = serde_yaml::to_string(&temp).unwrap();
-        
-                match fstream::write_text(path.clone(), deserialized.clone(), true) {
-                    Some(_) => (),
-                    None => return Err(Error::Io(format!("Couldn't write text to {}", path.to_str().unwrap()))),
-                };
+                let deserialized = serde_yaml::to_string(&temp)?;
+
+                fs::write(&path, deserialized.as_bytes())?;
 
                 deserialized
             }
         };
 
-        let internal: HashMap<String, String> = match serde_yaml::from_str(contents.as_str()) {
-            Ok(data) => data,
-            Err(error) => return Err(Error::Parse(error.to_string())),
-        };
+        let internal: HashMap<String, String> = serde_yaml::from_str(contents.as_str())?;
 
         let myself = Self{
             internal,
             path,
         };
 
-        return Ok(myself);
+        Ok(myself)
+    }
+
+    /// Clear a config by name and sync it with the disk.
+    pub fn write_clear_by_name<T: AsRef<str>>(name: T) -> Result<()> {
+        let mut config = Self::new(name)?;
+        
+        config.write_clear()
     }
 
     /// Update the config from disk.
-    pub fn read(&mut self) -> Result<(), Error> {       
-        let contents = match fstream::read_text(self.path.clone()) {
-            Some(data) => data,
-            None => return Err(Error::Io("Couldn't read text".to_string())),
-        };
+    pub fn read(&mut self) -> Result<()> {       
+        let contents = fs::read_to_string(&self.path)?;
 
-        let internal: HashMap<String, String> = match serde_yaml::from_str(contents.as_str()) {
-            Ok(data) => data,
-            Err(error) => return Err(Error::Parse(error.to_string())),
-        };
+        let internal: HashMap<String, String> = serde_yaml::from_str(contents.as_str())?;
 
         self.internal = internal;
 
@@ -64,13 +84,10 @@ impl Config {
     }
 
     /// Update the disk from the config.
-    pub fn write(&self) -> Result<(), Error> {
-        let deserialized = serde_yaml::to_string(&self.clone().internal).unwrap();
+    pub fn write(&self) -> Result<()> {
+        let deserialized = serde_yaml::to_string(&self.internal)?;
 
-        match fstream::write_text(self.clone().path, deserialized, true) {
-            Some(_) => (),
-            None => return Err(Error::Io(format!("Couldn't write text to {}", self.path.to_str().unwrap()))),
-        };
+        fs::write(&self.path, deserialized.as_bytes())?;
 
         Ok(())
     }
@@ -87,48 +104,32 @@ impl Config {
             None => return None,
         };
 
-        return Some(res.to_string());
+        Some(res.to_string())
     }
 
-    
     /// Clear all data in the config.
     pub fn clear(&mut self) {
         self.internal.clear();
     }
 
     /// Insert a key-value pair into the config and write to disk.
-    pub fn write_insert<T: AsRef<str>>(&mut self, key: T, value: T) -> Result<(), Error> {
+    pub fn write_insert<T: AsRef<str>>(&mut self, key: T, value: T) -> Result<()> {
         self.insert(key, value);
 
-        return self.write();
+        self.write()
     }
 
-    /// Read the system config and query the config.
-    pub fn read_get<T: AsRef<str>>(&mut self, query: T) -> Result<Option<String>, Error> {
-        match self.read() {
-            Ok(_) => (),
-            Err(error) => return Err(Error::Path(error.to_string())),
-        }
+    /// Read the system config and get a value for a key.
+    pub fn read_get<T: AsRef<str>>(&mut self, query: T) -> Result<Option<String>> {
+        self.read()?;
 
-        return Ok(self.get(query));
+        Ok(self.get(query))
     }
 
     /// Clear all data in the config and write to disk.
-    pub fn write_clear(&mut self) -> Result<(), Error> {
+    pub fn write_clear(&mut self) -> Result<()> {
         self.clear();
 
-        return self.write();
+        self.write()
     }
-}
-
-#[derive(Error, Debug, Clone, PartialEq, Hash)]
-pub enum Error {
-    #[error("Other Error: {0}")]
-    Other(String),
-    #[error("Error getting path: {0}")]
-    Path(String),
-    #[error("Error getting file data: {0}")]
-    Io(String),
-    #[error("Error parsing file: {0}")]
-    Parse(String),
 }
